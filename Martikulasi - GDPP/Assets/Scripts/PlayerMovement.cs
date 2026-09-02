@@ -1,58 +1,88 @@
-using System.Xml.Serialization;
+using Unity.VisualScripting;
 using UnityEngine;
+
+public enum PlayerStance { Stand, Climb }
 
 public class PlayerMovement : MonoBehaviour
 {
-    private InputPlayerControls input;
-    private Animator animator;
-
+    [SerializeField] private InputManager input;
     [SerializeField] private float walkSpeed;
-    private Rigidbody rb;
-    private Vector3 movementDirection;
+    [SerializeField] private float sprintSpeed;
+    [SerializeField] private float walkSprintTransition;
+    [SerializeField] private float jumpForce;
+    [SerializeField] private float rotationSmoothTime = .1f;
+    [SerializeField] private Transform groundDetector;
+    [SerializeField] private float detectorRadius;
+    [SerializeField] private LayerMask groundLayer;
 
-    public Vector2 moveInput { get; private set; }
+    private Rigidbody rb;
+    private float speed;
+    private float rotationSmoothVelocity;
+    private bool isGrounded;
 
     private void Awake()
     {
-        input = new InputPlayerControls();
         rb = GetComponent<Rigidbody>();
-        animator = GetComponent<Animator>();
+    }
+
+    private void Start()
+    {
+        speed = walkSpeed;
+
+        input.OnMoveInput += Move;
+        input.OnSprintInput += Sprint;
+        input.OnJumpInput += Jump;
     }
 
     private void Update()
     {
-        ApplyMovement();
-        AnimationControllers();
+        CheckIsGrounded();
     }
 
-    private void AnimationControllers()
+    private void OnDestroy()
     {
-        float xVelocity = Vector3.Dot(movementDirection.normalized, transform.right);
-        float zVelocity = Vector3.Dot(movementDirection.normalized, transform.forward);
-
-        animator.SetFloat("xVelocity", xVelocity, .1f, Time.deltaTime);
-        animator.SetFloat("zVelocity", zVelocity, .1f, Time.deltaTime);
+        input.OnMoveInput -= Move;
+        input.OnSprintInput -= Sprint;
+        input.OnJumpInput -= Jump;
     }
 
-    private void ApplyMovement()
+    private void Move(Vector2 axisDir)
     {
-        movementDirection = new Vector3(moveInput.x, 0, moveInput.y);
-
-        if (movementDirection.magnitude > 0)
+        if (axisDir.magnitude >= 0.1)
         {
-            rb.AddForce(movementDirection *  walkSpeed);
+            float rotationAngle = Mathf.Atan2(axisDir.x, axisDir.y) * Mathf.Rad2Deg;
+            float smoothAngle = Mathf.SmoothDampAngle(transform.eulerAngles.y, rotationAngle, ref rotationSmoothVelocity, rotationSmoothTime);
+            transform.rotation = Quaternion.Euler(0f, smoothAngle, 0f);
+            Vector3 moveDir = Quaternion.Euler(0f, rotationAngle, 0f) * Vector3.forward;
+            rb.AddForce(moveDir * speed * Time.deltaTime);
         }
     }
 
-    private void OnEnable()
+    private void Sprint (bool isSprint)
     {
-        input.Enable();
-
-        input.Player.Movement.performed += context => moveInput = context.ReadValue<Vector2>();
-        input.Player.Movement.canceled += context => moveInput = Vector2.zero;
-
-        input.Player.tes.performed += context => Debug.Log("TESSS");
+        if (isSprint)
+        {
+            if (speed < sprintSpeed)
+                speed += walkSprintTransition * Time.deltaTime;
+        }
+        else
+        {
+            if (speed > walkSpeed)
+                speed -= walkSprintTransition * Time.deltaTime;
+        }
     }
 
-    private void OnDisable() => input.Disable();
+    private void Jump()
+    {
+        Vector3 jumpDir = Vector3.up;
+        if (isGrounded)
+            rb.AddForce(jumpDir * jumpForce * Time.deltaTime);
+    }
+
+    private void CheckIsGrounded()
+    {
+        isGrounded = Physics.CheckSphere(groundDetector.position, detectorRadius, groundLayer);
+    }
+
+
 }
