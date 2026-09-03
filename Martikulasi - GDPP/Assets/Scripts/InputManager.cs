@@ -7,6 +7,7 @@ public class InputManager : MonoBehaviour
     public Action<bool> OnSprintInput;
     public Action OnJumpInput;
     public Action OnClimbInput;
+    public Action OnCancelClimb;
 
     private void Update()
     {
@@ -64,6 +65,8 @@ public class InputManager : MonoBehaviour
     private void CheckClimbInput()
     {
         bool isPressClimbInput = Input.GetKeyDown(KeyCode.E);
+        if (isPressClimbInput)
+            OnClimbInput();
     }
 
     private void CheckGlideInput()
@@ -74,6 +77,11 @@ public class InputManager : MonoBehaviour
     private void CheckCancelInput()
     {
         bool isPressCancelInput = Input.GetKeyDown(KeyCode.C);
+        if (isPressCancelInput)
+        {
+            if (OnCancelClimb != null)
+                OnCancelClimb();
+        }
     }
 
     private void CheckPunchInput()

@@ -14,29 +14,41 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private Transform groundDetector;
     [SerializeField] private float detectorRadius;
     [SerializeField] private LayerMask groundLayer;
+    [SerializeField] private Vector3 upperStepOffset;
+    [SerializeField] private float stepCheckerDistance;
+    [SerializeField] private float stepForce;
+    [SerializeField] private Transform climbDetector;
+    [SerializeField] private float climbCheckDistance;
+    [SerializeField] private LayerMask climbableLayer;
+    [SerializeField] private Vector3 climbOffset;
+    [SerializeField] private float climbSpeed;
 
     private Rigidbody rb;
     private float speed;
     private float rotationSmoothVelocity;
     private bool isGrounded;
+    private PlayerStance playerStance;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        speed = walkSpeed;
+        playerStance = PlayerStance.Stand;
     }
 
     private void Start()
     {
-        speed = walkSpeed;
-
         input.OnMoveInput += Move;
         input.OnSprintInput += Sprint;
         input.OnJumpInput += Jump;
+        input.OnClimbInput += StartClimb;
+        input.OnCancelClimb += CancelClimb;
     }
 
     private void Update()
     {
         CheckIsGrounded();
+        CheckStep();
     }
 
     private void OnDestroy()
@@ -44,16 +56,29 @@ public class PlayerMovement : MonoBehaviour
         input.OnMoveInput -= Move;
         input.OnSprintInput -= Sprint;
         input.OnJumpInput -= Jump;
+        input.OnClimbInput -= StartClimb;
+        input.OnCancelClimb -= CancelClimb;
     }
 
     private void Move(Vector2 axisDir)
     {
-        if (axisDir.magnitude >= 0.1)
+        Vector3 moveDir = Vector3.zero;
+        if (playerStance == PlayerStance.Stand)
         {
-            float rotationAngle = Mathf.Atan2(axisDir.x, axisDir.y) * Mathf.Rad2Deg;
-            float smoothAngle = Mathf.SmoothDampAngle(transform.eulerAngles.y, rotationAngle, ref rotationSmoothVelocity, rotationSmoothTime);
-            transform.rotation = Quaternion.Euler(0f, smoothAngle, 0f);
-            Vector3 moveDir = Quaternion.Euler(0f, rotationAngle, 0f) * Vector3.forward;
+            if (axisDir.magnitude >= 0.1)
+            {
+                float rotationAngle = Mathf.Atan2(axisDir.x, axisDir.y) * Mathf.Rad2Deg;
+                float smoothAngle = Mathf.SmoothDampAngle(transform.eulerAngles.y, rotationAngle, ref rotationSmoothVelocity, rotationSmoothTime);
+                transform.rotation = Quaternion.Euler(0f, smoothAngle, 0f);
+                moveDir = Quaternion.Euler(0f, rotationAngle, 0f) * Vector3.forward;
+                rb.AddForce(moveDir * speed * Time.deltaTime);
+            }
+        }
+        if (playerStance == PlayerStance.Climb)
+        {
+            Vector3 horizontal = axisDir.x * transform.right;
+            Vector3 vertical = axisDir.y * transform.up;
+            moveDir = horizontal + vertical;
             rb.AddForce(moveDir * speed * Time.deltaTime);
         }
     }
@@ -84,5 +109,38 @@ public class PlayerMovement : MonoBehaviour
         isGrounded = Physics.CheckSphere(groundDetector.position, detectorRadius, groundLayer);
     }
 
+    private void CheckStep()
+    {
+        bool isHitLowerStep = Physics.Raycast(groundDetector.position, transform.forward, stepCheckerDistance);
+        bool isHitUpperStep = Physics.Raycast(groundDetector.position + upperStepOffset, transform.forward, stepCheckerDistance);
 
+        if (isHitLowerStep && !isHitUpperStep)
+            rb.AddForce(0, stepForce * Time.deltaTime, 0);
+    }
+
+    private void StartClimb()
+    {
+        bool isInFrontOfClimbingWall = Physics.Raycast(climbDetector.position, transform.forward, out RaycastHit hit, climbCheckDistance, climbableLayer);
+        bool isNotClimbing = playerStance != PlayerStance.Climb;
+
+        if (isInFrontOfClimbingWall && isGrounded && isNotClimbing)
+        {
+            Vector3 offset = (transform.forward * climbOffset.z) + (Vector3.up * climbOffset.y);
+            transform.position = hit.point - offset;
+            playerStance = PlayerStance.Climb;
+            rb.useGravity = false;
+            speed = climbSpeed;
+        }
+    }
+
+    private void CancelClimb()
+    {
+        if (playerStance == PlayerStance.Climb)
+        {
+            playerStance = PlayerStance.Stand;
+            rb.useGravity = true;
+            transform.position -= transform.forward;
+            speed = walkSpeed;
+        }
+    }
 }
