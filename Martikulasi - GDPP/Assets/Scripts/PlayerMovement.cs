@@ -1,4 +1,3 @@
-using Unity.VisualScripting;
 using UnityEngine;
 
 public enum PlayerStance { Stand, Climb }
@@ -22,18 +21,23 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private LayerMask climbableLayer;
     [SerializeField] private Vector3 climbOffset;
     [SerializeField] private float climbSpeed;
+    [SerializeField] private CameraManager cameraManager;
 
     private Rigidbody rb;
     private float speed;
     private float rotationSmoothVelocity;
     private bool isGrounded;
     private PlayerStance playerStance;
+    private Transform cameraTransform;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
         speed = walkSpeed;
         playerStance = PlayerStance.Stand;
+        cameraTransform = Camera.main.transform;
+
+        HideAndLockCursor();
     }
 
     private void Start()
@@ -60,18 +64,38 @@ public class PlayerMovement : MonoBehaviour
         input.OnCancelClimb -= CancelClimb;
     }
 
+    private void HideAndLockCursor()
+    {
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+    }
+
     private void Move(Vector2 axisDir)
     {
         Vector3 moveDir = Vector3.zero;
         if (playerStance == PlayerStance.Stand)
         {
-            if (axisDir.magnitude >= 0.1)
+            switch (cameraManager.cameraState)
             {
-                float rotationAngle = Mathf.Atan2(axisDir.x, axisDir.y) * Mathf.Rad2Deg;
-                float smoothAngle = Mathf.SmoothDampAngle(transform.eulerAngles.y, rotationAngle, ref rotationSmoothVelocity, rotationSmoothTime);
-                transform.rotation = Quaternion.Euler(0f, smoothAngle, 0f);
-                moveDir = Quaternion.Euler(0f, rotationAngle, 0f) * Vector3.forward;
-                rb.AddForce(moveDir * speed * Time.deltaTime);
+                case CameraState.ThirdPerson:
+                    if (axisDir.magnitude >= 0.1)
+                    {
+                        float rotationAngle = Mathf.Atan2(axisDir.x, axisDir.y) * Mathf.Rad2Deg + cameraTransform.eulerAngles.y;
+                        float smoothAngle = Mathf.SmoothDampAngle(transform.eulerAngles.y, rotationAngle, ref rotationSmoothVelocity, rotationSmoothTime);
+                        transform.rotation = Quaternion.Euler(0f, smoothAngle, 0f);
+                        moveDir = Quaternion.Euler(0f, rotationAngle, 0f) * Vector3.forward;
+                        rb.AddForce(moveDir * speed * Time.deltaTime);
+                    }
+                    break;
+                case CameraState.FirstPerson:
+                    transform.rotation = Quaternion.Euler(0f, cameraTransform.eulerAngles.y, 0f);
+                    Vector3 verticalDir = axisDir.y * transform.forward;
+                    Vector3 horizontalDir = axisDir.x * transform.right;
+                    moveDir = verticalDir + horizontalDir;
+                    rb.AddForce(moveDir * speed * Time.deltaTime);
+                    break;
+                default:
+                    break;
             }
         }
         if (playerStance == PlayerStance.Climb)
@@ -83,7 +107,7 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    private void Sprint (bool isSprint)
+    private void Sprint(bool isSprint)
     {
         if (isSprint)
         {
