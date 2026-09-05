@@ -154,6 +154,8 @@ public class PlayerMovement : MonoBehaviour
             playerStance = PlayerStance.Climb;
             rb.useGravity = false;
             speed = climbSpeed;
+            cameraManager.SetFPSClampedCamera(true, transform.rotation.eulerAngles);
+            cameraManager.SetTPSFieldOfView(70f);
         }
     }
 
@@ -165,6 +167,8 @@ public class PlayerMovement : MonoBehaviour
             rb.useGravity = true;
             transform.position -= transform.forward;
             speed = walkSpeed;
+            cameraManager.SetFPSClampedCamera(false, transform.rotation.eulerAngles);
+            cameraManager.SetTPSFieldOfView(40f);
         }
     }
 }
