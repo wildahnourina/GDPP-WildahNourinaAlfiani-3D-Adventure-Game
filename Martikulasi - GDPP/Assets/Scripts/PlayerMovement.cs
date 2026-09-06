@@ -29,13 +29,16 @@ public class PlayerMovement : MonoBehaviour
     private bool isGrounded;
     private PlayerStance playerStance;
     private Transform cameraTransform;
+    private Animator anim;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        anim = GetComponent<Animator>();
+        cameraTransform = Camera.main.transform;
+
         speed = walkSpeed;
         playerStance = PlayerStance.Stand;
-        cameraTransform = Camera.main.transform;
 
         HideAndLockCursor();
     }
@@ -47,6 +50,7 @@ public class PlayerMovement : MonoBehaviour
         input.OnJumpInput += Jump;
         input.OnClimbInput += StartClimb;
         input.OnCancelClimb += CancelClimb;
+        cameraManager.OnChangePerspective += ChangePerspective;
     }
 
     private void Update()
@@ -62,6 +66,7 @@ public class PlayerMovement : MonoBehaviour
         input.OnJumpInput -= Jump;
         input.OnClimbInput -= StartClimb;
         input.OnCancelClimb -= CancelClimb;
+        cameraManager.OnChangePerspective -= ChangePerspective;
     }
 
     private void HideAndLockCursor()
@@ -97,6 +102,10 @@ public class PlayerMovement : MonoBehaviour
                 default:
                     break;
             }
+            Vector3 velocity = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
+            anim.SetFloat("velocity", velocity.magnitude * axisDir.magnitude);
+            anim.SetFloat("velocityX", velocity.magnitude * axisDir.x);
+            anim.SetFloat("velocityZ", velocity.magnitude * axisDir.y);
         }
         if (playerStance == PlayerStance.Climb)
         {
@@ -125,12 +134,16 @@ public class PlayerMovement : MonoBehaviour
     {
         Vector3 jumpDir = Vector3.up;
         if (isGrounded)
+        {
             rb.AddForce(jumpDir * jumpForce * Time.deltaTime);
+            anim.SetTrigger("jump");
+        }
     }
 
     private void CheckIsGrounded()
     {
         isGrounded = Physics.CheckSphere(groundDetector.position, detectorRadius, groundLayer);
+        anim.SetBool("isGrounded", isGrounded);
     }
 
     private void CheckStep()
@@ -171,4 +184,6 @@ public class PlayerMovement : MonoBehaviour
             cameraManager.SetTPSFieldOfView(40f);
         }
     }
+
+    private void ChangePerspective() => anim.SetTrigger("changePerspective");
 }

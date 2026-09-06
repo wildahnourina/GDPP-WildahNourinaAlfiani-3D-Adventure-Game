@@ -10269,8 +10269,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
   input: {fileID: 446083409}
-  walkSpeed: 350
-  sprintSpeed: 450
+  walkSpeed: 380
+  sprintSpeed: 480
   walkSprintTransition: 60
   jumpForce: 10000
   rotationSmoothTime: 0.1
@@ -10300,7 +10300,7 @@ Animator:
   m_GameObject: {fileID: 8967315288226365547}
   m_Enabled: 1
   m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: fecee41be1c28d14b999da106d31afb6, type: 2}
+  m_Controller: {fileID: 9100000, guid: b8bfdf7af6acb304aa0fd2b4d1b01d8b, type: 2}
   m_CullingMode: 0
   m_UpdateMode: 0
   m_ApplyRootMotion: 0
