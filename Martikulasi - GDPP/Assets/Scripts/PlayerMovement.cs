@@ -45,12 +45,14 @@ public class PlayerMovement : MonoBehaviour
     private bool isPunching;
     private int combo;
     private Coroutine resetComboCo;
+    private PlayerAudioManager playerAudioManager;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
         anim = GetComponent<Animator>();
         playerCollider = GetComponent<CapsuleCollider>();
+        playerAudioManager = GetComponent<PlayerAudioManager>();
         cameraTransform = Camera.main.transform;
 
         speed = walkSpeed;
@@ -272,6 +274,7 @@ public class PlayerMovement : MonoBehaviour
             playerStance = PlayerStance.Glide;
             anim.SetBool("isGliding", true);
             cameraManager.SetFPSClampedCamera(true, transform.rotation.eulerAngles);
+            playerAudioManager.PlayGlidingSfx();
         }
     }
 
@@ -282,6 +285,7 @@ public class PlayerMovement : MonoBehaviour
             playerStance = PlayerStance.Stand;
             anim.SetBool("isGliding", false);
             cameraManager.SetFPSClampedCamera(false, transform.rotation.eulerAngles);
+            playerAudioManager.StopGlidingSfx();
         }
     }
 
